@@ -23,7 +23,12 @@ function apiKeyFromAuth(auth: unknown): string | undefined {
   return undefined
 }
 
-const OpenferenceAuth: Plugin = async () => {
+// OpenCode's plugin loader expects a `default` export shaped as PluginModule
+// ({ id, server }). Path plugins MUST provide `id`; npm plugins derive it from
+// package.json instead. `server` is the actual plugin entry point.
+const PLUGIN_ID = "openference"
+
+const server: Plugin = async () => {
   return {
     config: async (cfg) => {
       cfg.provider = cfg.provider ?? {}
@@ -128,4 +133,9 @@ const OpenferenceAuth: Plugin = async () => {
   }
 }
 
-export { OpenferenceAuth }
+// Primary export consumed by the OpenCode plugin loader (V1 PluginModule shape).
+// `id` is required for path plugins; `server` is the plugin function itself.
+export default { id: PLUGIN_ID, server }
+
+// Named export retained for direct imports and tests.
+export { server as OpenferenceAuth }
