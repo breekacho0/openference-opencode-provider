@@ -43,7 +43,7 @@ die() {
 # ── dependency check ─────────────────────────────────────────────────
 
 command -v curl >/dev/null 2>&1 || die "curl is required but not installed."
-command -v jq   >/dev/null 2>&1 || die "jq is required but not installed (https://stedolan.github.io/jq/download/)."
+command -v jq   >/dev/null 2>&1 || die "jq is required but not installed (https://jqlang.github.io/jq/)."
 
 # ── argument parsing ─────────────────────────────────────────────────
 

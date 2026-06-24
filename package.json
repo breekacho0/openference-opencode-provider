@@ -1,5 +1,5 @@
 {
-  "name": "opencode-openreference",
+  "name": "opencode-openference",
   "version": "0.1.0",
   "description": "OpenCode auth provider for Openference — first-class /connect integration with dynamic model discovery.",
   "type": "module",
@@ -16,7 +16,6 @@
     "opencode",
     "opencode-plugin",
     "openference",
-    "openreference",
     "ai-provider"
   ],
   "license": "MIT",

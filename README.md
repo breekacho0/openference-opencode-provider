@@ -1,10 +1,10 @@
-# OpenReference Auth Provider for OpenCode
+# Openference Auth Provider for OpenCode
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Made for OpenCode](https://img.shields.io/badge/Made%20for-OpenCode-000?logo=opencode)
 
 First-class OpenCode auth provider for **Openference** — an OpenAI-compatible
-inference endpoint. This plugin gives you a dedicated **OpenReference** entry in
+inference endpoint. This plugin gives you a dedicated **Openference** entry in
 the `/connect` menu (not under "Other"), prompts you for an API key, and
 dynamically discovers available models at startup.
 
@@ -15,14 +15,8 @@ for the best user experience.
 
 ### 1. Plugin (recommended) — `/connect` integration
 
-Install the npm package:
-
-```bash
-npm install opencode-openreference
-```
-
-Or drop the `src/` folder into your OpenCode plugins directory. Once installed,
-the **OpenReference** provider appears as a first-class entry in the `/connect`
+Drop the `src/` folder into your OpenCode plugins directory. Once installed,
+the **Openference** provider appears as a first-class entry in the `/connect`
 menu.
 
 ### 2. Static config (existing)
@@ -42,18 +36,18 @@ This gives you the `GLM-5.2` model without any plugin. Use
 Install the plugin for the `/connect` auth flow, but keep a static model list in
 your `opencode.json` if you prefer not to fetch models dynamically:
 
-```bash
-npm install opencode-openreference
-# Then manually add models to your opencode.json under provider.openference.models
+```
+# Install the plugin as above, then manually add models to your opencode.json
+# under provider.openference.models
 ```
 
 ## `/connect` flow
 
 1. Run OpenCode.
 2. Type `/connect` and press Enter.
-3. Select **OpenReference** from the provider list (listed as a first-class
+3. Select **Openference** from the provider list (listed as a first-class
    entry, not under "Other").
-4. Select **Enter OpenReference API Key**.
+4. Select **Enter Openference API Key**.
 5. Paste your Openference API key when prompted.
 
 Your key is stored securely in `~/.local/share/opencode/auth.json`. The plugin
@@ -78,7 +72,7 @@ After logging out, run `/connect` again to re-authenticate.
 
 When the plugin is loaded and you are authenticated, it calls
 `GET /v1/models` with your API key on startup and builds a model list
-automatically. Each model appears as `<id> (via OpenReference)` in the
+automatically. Each model appears as `<id> (via Openference)` in the
 `/models` list.
 
 If the API call fails (network error, 401, timeout), the plugin falls back to a
@@ -105,7 +99,7 @@ provides the same dynamic discovery:
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `401 Unauthorized` or `Error: API error` | Invalid or missing API key | Re-run `/connect` and paste a valid key, or check `OPENFERENCE_API_KEY` |
-| Plugin not appearing in `/connect` | Plugin not installed / not detected | Ensure `opencode-openreference` is installed and OpenCode ≥ 1.0.0 |
+| Plugin not appearing in `/connect` | Plugin not installed / not detected | Ensure the `src/` plugin folder is in your OpenCode plugins directory and OpenCode ≥ 1.0.0 |
 | Models not showing in `/models` | Auth not established or API unreachable | Run `/connect` first; check network; the fallback model `GLM-5.2` should still appear |
 | `jq: command not found` | `jq` not installed | `apt install jq` / `brew install jq` / download from [jq website](https://jqlang.github.io/jq/) |
 | `curl: command not found` | `curl` not installed | `apt install curl` / `brew install curl` |
@@ -135,7 +129,7 @@ internally and merges with any existing config you have.
 ## Project structure
 
 ```
-openreference-opencode-provider/
+openference-opencode-provider/
 ├── src/
 │   └── index.ts          # OpenCode plugin (recommended)
 ├── bin/
@@ -153,4 +147,4 @@ openreference-opencode-provider/
 
 MIT — see [LICENSE](LICENSE).
 
-Copyright (c) 2026 openreference-opencode-provider contributors
+Copyright (c) 2026 openference-opencode-provider contributors
