@@ -1,94 +1,153 @@
-# Openference Auth Provider for OpenCode
+# OpenReference Auth Provider for OpenCode
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Made for OpenCode](https://img.shields.io/badge/Made%20for-OpenCode-000?logo=opencode)
 
-Minimal configuration and tooling to use [Openference](https://openference.com/docs)
-(an OpenAI-compatible inference endpoint) as a provider inside the
-[OpenCode](https://opencode.ai) CLI.
+First-class OpenCode auth provider for **Openference** — an OpenAI-compatible
+inference endpoint. This plugin gives you a dedicated **OpenReference** entry in
+the `/connect` menu (not under "Other"), prompts you for an API key, and
+dynamically discovers available models at startup.
 
-## What is this?
+## Installation
 
-This repository contains a ready-to-use `opencode.json` config file and a small
-shell script that dynamically discovers all available models from the Openference
-API. It saves you from manually copying model IDs into your config and helps you
-get started with OpenCode + Openference in under a minute.
+There are three ways to use this provider. **The plugin method is recommended**
+for the best user experience.
 
-## Quick start
+### 1. Plugin (recommended) — `/connect` integration
 
-1. **Set your API key**
+Install the npm package:
 
-   ```bash
-   export OPENFERENCE_API_KEY=sk-...
-   ```
+```bash
+npm install opencode-openreference
+```
 
-   You can also store it permanently via `opencode auth login -p openference`.
+Or drop the `src/` folder into your OpenCode plugins directory. Once installed,
+the **OpenReference** provider appears as a first-class entry in the `/connect`
+menu.
 
-2. **Copy the config**
+### 2. Static config (existing)
 
-   ```bash
-   cp opencode.json ~/.config/opencode/opencode.json
-   ```
+Copy the `opencode.json` file from this repo and set the environment variable:
 
-   If you already have an existing config, merge the `provider.openference` block
-   into your own `opencode.json`.
+```bash
+export OPENFERENCE_API_KEY=sk-...
+cp opencode.json ~/.config/opencode/opencode.json
+```
 
-3. **Run OpenCode**
+This gives you the `GLM-5.2` model without any plugin. Use
+`bin/sync-models.sh` to discover all available models.
 
-   ```bash
-   opencode
-   ```
+### 3. Hybrid — plugin auth + custom static models
 
-   Use `/models` inside the CLI to select `openference/GLM-5.2` (or any model
-   you added via the sync script).
+Install the plugin for the `/connect` auth flow, but keep a static model list in
+your `opencode.json` if you prefer not to fetch models dynamically:
 
-## Dynamic model sync
+```bash
+npm install opencode-openreference
+# Then manually add models to your opencode.json under provider.openference.models
+```
 
-The provided `opencode.json` ships with a single example model (`GLM-5.2`).
-To generate a config **with every model available on your Openference account**,
-run the sync script:
+## `/connect` flow
+
+1. Run OpenCode.
+2. Type `/connect` and press Enter.
+3. Select **OpenReference** from the provider list (listed as a first-class
+   entry, not under "Other").
+4. Select **Enter OpenReference API Key**.
+5. Paste your Openference API key when prompted.
+
+Your key is stored securely in `~/.local/share/opencode/auth.json`. The plugin
+automatically fetches the model list from the API at startup so you can switch
+models via `/models` immediately.
+
+## `/logout` flow
+
+There are two ways to log out:
+
+- **CLI**: Run `./bin/logout.sh` from this repository.
+- **Manual**: Edit `~/.local/share/opencode/auth.json` and remove the
+  `openference` block:
+
+  ```bash
+  jq 'del(.openference)' ~/.local/share/opencode/auth.json > tmp && mv tmp ~/.local/share/opencode/auth.json
+  ```
+
+After logging out, run `/connect` again to re-authenticate.
+
+## Dynamic model discovery
+
+When the plugin is loaded and you are authenticated, it calls
+`GET /v1/models` with your API key on startup and builds a model list
+automatically. Each model appears as `<id> (via OpenReference)` in the
+`/models` list.
+
+If the API call fails (network error, 401, timeout), the plugin falls back to a
+built-in default model (`GLM-5.2`) so you can still use the provider.
+
+For **static config users** (method 2), the `bin/sync-models.sh` script
+provides the same dynamic discovery:
 
 ```bash
 ./bin/sync-models.sh > opencode.generated.json
 ```
 
-Or write directly to your config directory (requires confirmation):
-
-```bash
-./bin/sync-models.sh --write ~/.config/opencode/opencode.json
-```
-
-You can then copy, merge, or commit the generated file as needed.
-
-## Auth options
-
-| Method | Command / Variable |
-|---|---|
-| **Environment variable** | `export OPENFERENCE_API_KEY=sk-...` |
-| **OpenCode auth store** | `opencode auth login -p openference` (stores key in `~/.local/share/opencode/auth.json`) |
-| **Script argument** | `./bin/sync-models.sh sk-...` |
-
-The config file references the key via `{env:OPENFERENCE_API_KEY}`, so OpenCode
-will pick it up from your environment or its built-in auth store.
-
 ## Requirements
 
-- **bash** – the sync script is written for bash (not POSIX sh).
-- **curl** – used for the HTTP request to the Openference API.
-- **jq** – used to parse the JSON response. Install from
-  [stedolan.github.io/jq](https://stedolan.github.io/jq/download/) or your
-  package manager (`apt install jq`, `brew install jq`, etc.).
-- **opencode CLI** – [opencode.ai](https://opencode.ai) to actually use the config.
+- **OpenCode** ≥ 1.0.0 (for the plugin) or any version (for static config)
+- **bash** – the scripts are written for bash (not POSIX sh).
+- **curl** – used by `sync-models.sh`.
+- **jq** – used by `sync-models.sh` and `logout.sh`. Install from
+  [jqlang.github.io/jq](https://jqlang.github.io/jq/) or your package manager
+  (`apt install jq`, `brew install jq`, etc.).
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `401 Unauthorized` or `Error: API error` | Invalid or missing API key | Check `OPENFERENCE_API_KEY` is set and correct |
-| `jq: command not found` | `jq` not installed | `apt install jq` / `brew install jq` / download from [jq website](https://stedolan.github.io/jq/) |
+| `401 Unauthorized` or `Error: API error` | Invalid or missing API key | Re-run `/connect` and paste a valid key, or check `OPENFERENCE_API_KEY` |
+| Plugin not appearing in `/connect` | Plugin not installed / not detected | Ensure `opencode-openreference` is installed and OpenCode ≥ 1.0.0 |
+| Models not showing in `/models` | Auth not established or API unreachable | Run `/connect` first; check network; the fallback model `GLM-5.2` should still appear |
+| `jq: command not found` | `jq` not installed | `apt install jq` / `brew install jq` / download from [jq website](https://jqlang.github.io/jq/) |
 | `curl: command not found` | `curl` not installed | `apt install curl` / `brew install curl` |
 | `No models returned` | API key may lack model access, or endpoint changed | Verify with `curl -H "Authorization: Bearer $KEY" https://api.openference.com/v1/models` |
-| OpenCode doesn't see the provider | Config not in correct location | Ensure `opencode.json` is at `~/.config/opencode/opencode.json` |
+| OpenCode doesn't see the provider (static config) | Config not in correct location | Ensure `opencode.json` is at `~/.config/opencode/opencode.json` |
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `bin/sync-models.sh` | Fetch live model list and generate an OpenCode-compatible config (for static config users) |
+| `bin/logout.sh` | Remove the `openference` entry from `auth.json` (power-user CLI logout) |
+
+## Auth storage
+
+When you authenticate via `/connect`, your API key is stored in
+`~/.local/share/opencode/auth.json` under the `openference` key. The
+environment variable `OPENFERENCE_API_KEY` is also respected by both the
+static config and the plugin.
+
+## Config reference
+
+The static `opencode.json` uses provider ID `openference` and references the
+API key via `{env:OPENFERENCE_API_KEY}`. The plugin uses the same provider ID
+internally and merges with any existing config you have.
+
+## Project structure
+
+```
+openreference-opencode-provider/
+├── src/
+│   └── index.ts          # OpenCode plugin (recommended)
+├── bin/
+│   ├── sync-models.sh    # Model sync script (static config users)
+│   └── logout.sh         # CLI logout script
+├── opencode.json         # Static config (minimal example)
+├── package.json          # npm package definition
+├── tsconfig.json         # TypeScript configuration
+├── README.md
+├── LICENSE
+└── .gitignore
+```
 
 ## License
 
