@@ -49,6 +49,18 @@ const server: Plugin = async () => {
       cfg.provider = cfg.provider ?? {}
       const provider = cfg.provider[PROVIDER_ID]
 
+      // Only wire an env-var placeholder when the user has actually exported
+      // OPENFERENCE_API_KEY. OpenCode does NOT expand `{env:...}` for the
+      // `apiKey` field (only for URL templates), so leaving the literal
+      // placeholder here when the var is unset would send the string
+      // "{env:OPENFERENCE_API_KEY}" as the bearer token and yield "Invalid
+      // API key". When the env var is absent we set NO apiKey here and let
+      // OpenCode fall back to the key stored by /connect in auth.json
+      // (provider.key), which is resolved at provider.ts:1686.
+      const envApiKey = (globalThis as { process?: { env: Record<string, string | undefined> } })
+        .process?.env?.[ENV_VAR]
+      const resolvedApiKey = envApiKey ? `{env:${ENV_VAR}}` : undefined
+
       if (provider) {
         // User already has an openference provider block — merge defaults without
         // overwriting user-set fields.
@@ -56,19 +68,19 @@ const server: Plugin = async () => {
         provider.name = provider.name ?? PROVIDER_NAME
         provider.options = provider.options ?? {}
         provider.options.baseURL = provider.options.baseURL ?? BASE_URL
-        provider.options.apiKey =
-          provider.options.apiKey ?? `{env:${ENV_VAR}}`
+        if (resolvedApiKey) provider.options.apiKey = provider.options.apiKey ?? resolvedApiKey
         provider.models = provider.models ?? MODELS
         return
       }
 
-      // No existing provider config — add a fresh one with env-var auth key.
+      // No existing provider config — add a fresh one. apiKey is set only when
+      // the env var is present; otherwise auth comes from /connect (auth.json).
       cfg.provider[PROVIDER_ID] = {
         npm: NPM_PACKAGE,
         name: PROVIDER_NAME,
         options: {
           baseURL: BASE_URL,
-          apiKey: `{env:${ENV_VAR}}`,
+          ...(resolvedApiKey ? { apiKey: resolvedApiKey } : {}),
         },
         models: MODELS,
       }
