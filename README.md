@@ -6,7 +6,8 @@
 First-class OpenCode auth provider for **Openference** — an OpenAI-compatible
 inference endpoint. This plugin gives you a dedicated **Openference** entry in
 the `/connect` menu (not under "Other"), prompts you for an API key, and
-dynamically discovers available models at startup.
+ships a static catalogue of all Openference models so they show up in
+`/models` immediately.
 
 ## Installation
 
@@ -33,8 +34,8 @@ This gives you the `GLM-5.2` model without any plugin. Use
 
 ### 3. Hybrid — plugin auth + custom static models
 
-Install the plugin for the `/connect` auth flow, but keep a static model list in
-your `opencode.json` if you prefer not to fetch models dynamically:
+Install the plugin for the `/connect` auth flow, but keep your own static model
+list in `opencode.json` instead of using the plugin's built-in catalogue:
 
 ```
 # Install the plugin as above, then manually add models to your opencode.json
@@ -51,8 +52,8 @@ your `opencode.json` if you prefer not to fetch models dynamically:
 5. Paste your Openference API key when prompted.
 
 Your key is stored securely in `~/.local/share/opencode/auth.json`. The plugin
-automatically fetches the model list from the API at startup so you can switch
-models via `/models` immediately.
+ships a static catalogue of all Openference models, so you can switch models
+via `/models` immediately — no startup network call needed.
 
 ## `/logout` flow
 
@@ -68,22 +69,29 @@ There are two ways to log out:
 
 After logging out, run `/connect` again to re-authenticate.
 
-## Dynamic model discovery
+## Model catalogue
 
-When the plugin is loaded and you are authenticated, it calls
-`GET /v1/models` with your API key on startup and builds a model list
-automatically. Each model appears as `<id> (via Openference)` in the
-`/models` list.
+This plugin ships a **static** list of all Openference models (the full set
+returned by `GET /v1/models`). Each model appears as `<id> (via Openference)`
+in the `/models` list. No network call is made at startup — the list comes from
+the plugin's `MODELS` table, so `/models` is populated immediately.
 
-If the API call fails (network error, 401, timeout), the plugin falls back to a
-built-in default model (`GLM-5.2`) so you can still use the provider.
+**Why static, not dynamic?** OpenCode only invokes a plugin's model-discovery
+hook for providers registered in the [models.dev](https://models.dev) registry.
+`openference` is a custom provider that isn't in that registry yet, so a
+dynamic hook would silently never run. The static catalogue is the reliable way
+to expose the models today.
 
-For **static config users** (method 2), the `bin/sync-models.sh` script
-provides the same dynamic discovery:
+When Openference adds new models, refresh the list with one of:
 
-```bash
-./bin/sync-models.sh > opencode.generated.json
-```
+- **Plugin users**: run `./bin/sync-models.sh` (see below) to print the live
+  list, then copy the new model entries into `src/index.ts` (`MODELS`) — or
+  just wait for a new release of this plugin.
+- **Static config users**: regenerate your config entirely:
+
+  ```bash
+  ./bin/sync-models.sh > opencode.generated.json
+  ```
 
 ## Requirements
 
@@ -100,7 +108,8 @@ provides the same dynamic discovery:
 |---|---|---|
 | `401 Unauthorized` or `Error: API error` | Invalid or missing API key | Re-run `/connect` and paste a valid key, or check `OPENFERENCE_API_KEY` |
 | Plugin not appearing in `/connect` | Plugin not installed / not detected | Ensure the `src/` plugin folder is in your OpenCode plugins directory and OpenCode ≥ 1.0.0 |
-| Models not showing in `/models` | Auth not established or API unreachable | Run `/connect` first; check network; the fallback model `GLM-5.2` should still appear |
+| Models not showing in `/models` | Plugin not loaded, or `src/` `MODELS` table empty | The full static catalogue appears without auth; if it's missing the plugin didn't load — check the path in your config and OpenCode's plugin log |
+| A model from the API is missing in `/models` | New model added by Openference, not yet in `MODELS` | Run `./bin/sync-models.sh` to see the live list, then add the entry to `MODELS` in `src/index.ts` |
 | `jq: command not found` | `jq` not installed | `apt install jq` / `brew install jq` / download from [jq website](https://jqlang.github.io/jq/) |
 | `curl: command not found` | `curl` not installed | `apt install curl` / `brew install curl` |
 | `No models returned` | API key may lack model access, or endpoint changed | Verify with `curl -H "Authorization: Bearer $KEY" https://api.openference.com/v1/models` |
@@ -110,7 +119,7 @@ provides the same dynamic discovery:
 
 | Script | Purpose |
 |---|---|
-| `bin/sync-models.sh` | Fetch live model list and generate an OpenCode-compatible config (for static config users) |
+| `bin/sync-models.sh` | Fetch the live model list from the API and generate an OpenCode-compatible config (for static config users, or to refresh the plugin's `MODELS` table) |
 | `bin/logout.sh` | Remove the `openference` entry from `auth.json` (power-user CLI logout) |
 
 ## Auth storage

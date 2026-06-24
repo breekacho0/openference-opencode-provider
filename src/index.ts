@@ -5,11 +5,26 @@ const PROVIDER_NAME = "Openference"
 const BASE_URL = "https://api.openference.com/v1"
 const ENV_VAR = "OPENFERENCE_API_KEY"
 const NPM_PACKAGE = "@ai-sdk/openai-compatible"
-// Config-style model entries (partial Model objects). OpenCode fills in the
-// rest of the Model fields at runtime, so we type these loosely — matching the
-// shape used in opencode.json and accepted by the provider.models hook.
-const FALLBACK_MODELS: Record<string, Record<string, unknown>> = {
+
+// Static model catalogue. The full list returned by GET /v1/models at the time
+// of writing. OpenCode only invokes a plugin's provider.models hook for
+// providers registered in the models.dev registry; `openference` is a custom
+// provider that isn't there yet, so that hook would never run. We therefore
+// expose the catalogue statically via the config() hook instead, and document
+// `bin/sync-models.sh` as the way to refresh it when Openference adds models.
+//
+// Keys MUST match exactly the IDs returned by the API (see
+// https://openference.com/models).
+const MODELS: Record<string, Record<string, unknown>> = {
   "GLM-5.2": { name: "GLM-5.2 (via Openference)" },
+  "GLM-5.1": { name: "GLM-5.1 (via Openference)" },
+  "Kimi K2.6": { name: "Kimi K2.6 (via Openference)" },
+  "DeepSeek-V4-Pro": { name: "DeepSeek-V4-Pro (via Openference)" },
+  "Kimi K2.7 Code": { name: "Kimi K2.7 Code (via Openference)" },
+  "Qwen3.7 Plus": { name: "Qwen3.7 Plus (via Openference)" },
+  "DeepSeek-V4-Flash": { name: "DeepSeek-V4-Flash (via Openference)" },
+  "MiMo-V2.5": { name: "MiMo-V2.5 (via Openference)" },
+  "Nemotron 3 Ultra": { name: "Nemotron 3 Ultra (via Openference)" },
 }
 
 // `Auth` is a discriminated union (OAuth | ApiAuth | WellKnownAuth); only the
@@ -43,7 +58,7 @@ const server: Plugin = async () => {
         provider.options.baseURL = provider.options.baseURL ?? BASE_URL
         provider.options.apiKey =
           provider.options.apiKey ?? `{env:${ENV_VAR}}`
-        provider.models = provider.models ?? FALLBACK_MODELS
+        provider.models = provider.models ?? MODELS
         return
       }
 
@@ -55,7 +70,7 @@ const server: Plugin = async () => {
           baseURL: BASE_URL,
           apiKey: `{env:${ENV_VAR}}`,
         },
-        models: FALLBACK_MODELS,
+        models: MODELS,
       }
     },
 
@@ -78,57 +93,6 @@ const server: Plugin = async () => {
           label: "Enter Openference API Key",
         },
       ],
-    },
-
-    provider: {
-      id: PROVIDER_ID,
-      models: async (_provider, ctx): Promise<Record<string, any>> => {
-        try {
-          const apiKey = apiKeyFromAuth(ctx.auth)
-          if (!apiKey) {
-            return FALLBACK_MODELS
-          }
-
-          // Prefer Bun.fetch when available (OpenCode runs on Bun), fall back to
-          // the global fetch otherwise. Guarded with `globalThis` so this also
-          // type-checks under a pure Node toolchain without @types/bun.
-          const g = globalThis as unknown as {
-            Bun?: { fetch: typeof fetch }
-          }
-          const fetcher = g.Bun ? g.Bun.fetch : globalThis.fetch
-          const response = await fetcher(`${BASE_URL}/models`, {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            signal: AbortSignal.timeout(5000),
-          })
-
-          if (!response.ok) {
-            console.warn(
-              `[${PROVIDER_NAME}] Models fetch returned ${response.status}`,
-            )
-            return FALLBACK_MODELS
-          }
-
-          const data = await response.json()
-          if (data?.data && Array.isArray(data.data)) {
-            const models: Record<string, { name: string }> = {}
-            for (const m of data.data) {
-              if (m.id) {
-                models[m.id] = { name: `${m.id} (via Openference)` }
-              }
-            }
-            if (Object.keys(models).length === 0) return FALLBACK_MODELS
-            return models
-          }
-
-          return FALLBACK_MODELS
-        } catch (e) {
-          console.warn(`[${PROVIDER_NAME}] Models fetch error:`, e)
-          return FALLBACK_MODELS
-        }
-      },
     },
   }
 }
