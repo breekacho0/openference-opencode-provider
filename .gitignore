@@ -1,0 +1,17 @@
+# Local overrides
+*.local.json
+
+# Generated full model config
+opencode.generated.json
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (even though this isn't a Node project, some tools drop it here)
+node_modules/
